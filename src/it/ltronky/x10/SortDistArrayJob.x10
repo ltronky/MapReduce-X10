@@ -31,8 +31,9 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 	public def partition(k:Long)=k;
 	
 	//Utility variables for collecting the sub-results
-	var keyRail:GlobalRef[Rail[Long]] = GlobalRef[Rail[Long]](new Rail[Long](Place.numPlaces(), -1));
-	var hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] = GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]](new HashMap[Long, Rail[Pair[Long,Long]]](Place.numPlaces()));
+	var keyRail:GlobalRef[Rail[Long]] = GlobalRef[Rail[Long]](new Rail[Long](Place.numPlaces()));
+	var hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] =
+		GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]](new HashMap[Long, Rail[Pair[Long,Long]]](Place.numPlaces()));
 	
 	public def sink(s:Iterable[Pair[Long, Rail[Pair[Long,Long]]]]): void {
 		//Collect at Place(0) all the ordered sub-arrays
@@ -52,15 +53,13 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			RailUtils.sort(keyRail(), (i:Long,j:Long)=>(i-j) as Int);
 			var tCounter:Long = 0;
 			for (i in 0..(Place.numPlaces()-1)) {
-				if (keyRail()(i) != -1) {
-					val piece = hashM().get(keyRail()(i));
-					for (j in 0..(piece.size-1)) {
-						val pos = tCounter; 
-						at (destArray.place(tCounter)) {
-							destArray(pos) = piece(j).first;
-						}
-						tCounter++;
+				val piece = hashM().get(keyRail()(i));
+				for (j in 0..(piece.size-1)) {
+					val pos = tCounter; 
+					at (destArray.place(tCounter)) {
+						destArray(pos) = piece(j).first;
 					}
+					tCounter++;
 				}
 			}
 		}
@@ -86,28 +85,36 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			RailUtils.sort(r, (i:Pair[Long,Long],j:Pair[Long,Long])=>(i.first-j.first) as Int);
 			sink.add(Pair(r(0).first, r));
 		}
-		
-		
 	}
+	
 	public static def test0(args:Rail[String]) {
 		val N = args.size > 0 ? Long.parseLong(args(0)) : 10;
 		Console.OUT.println("N=" + N);
+		val random = new Random();
 		val originArray = new DistArray_Block_1[Long](N, (Long)=>(new Random()).nextLong(10000L));
 		
 		//Print the original array
-		Console.OUT.print("{");
-		for (p in Place.places()) at(p) {
-			for (i in originArray.localIndices()) {
-				Console.OUT.print("(" + originArray(i) + " at " + originArray.place(i).id + "),");
+		try {
+			Console.OUT.print("{");
+			finish for (p in Place.places()) at(p) async {
+				//Console.OUT.println("Starting at " + here);
+				for (i in originArray.localIndices()) {
+					Console.OUT.print("(" + originArray(i) + " at " + originArray.place(i).id + "),");
+				}
+				Console.OUT.flush();
+				//Console.OUT.println("Done with " + here);
 			}
+			Console.OUT.println("}");
+		} catch (z:Exception) {
+			Console.OUT.println("Aha! " + z);
+			z.printStackTrace();
 		}
-		Console.OUT.println("}");
-		//Completed array Initializazion
+		//Array Initializazion Completed
 		val job=new SortDistArrayJob(originArray, new DistArray_Block_1[Long](N));
 		
 		//Find min and max values
 		job.max = finish(Reducible.MaxReducer[Long](Long.MIN_VALUE)) {
-			for(p in Place.places()) async at(p) {
+			async for(p in Place.places()) at(p) {
 				var localMax:Long = Long.MIN_VALUE;
 				for (i in originArray.localIndices()) {
 					if (originArray(i) > localMax) localMax = originArray(i);
@@ -116,7 +123,7 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			}
 		};
 		job.min = finish(Reducible.MinReducer[Long](Long.MAX_VALUE)) {
-			for(p in Place.places()) async at(p) {
+			async for(p in Place.places()) at(p) {
 				var localMin:Long = Long.MAX_VALUE;
 				for (i in originArray.localIndices()) {
 					if (originArray(i) < localMin) localMin = originArray(i);
@@ -130,13 +137,14 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 		new Engine(job).run();
 		
 		//Print out the result
-		Console.OUT.print("{");
-		for (p in Place.places()) at(p) {
+		Console.OUT.print("Sorted{");
+		finish for (p in Place.places()) at(p) async {
 			for (i in job.destArray.localIndices()) {
-				Console.OUT.print("(" + job.destArray(i) + " at " + job.destArray.place(i).id + "),");
+				Console.OUT.print("Sorted(" + job.destArray(i) + " at " + job.destArray.place(i).id + "),");
 			}
+			Console.OUT.flush();
 		}
-		Console.OUT.println("}");
+		Console.OUT.println("}Sorted");
 	}
 
 	public static def main(args:Rail[String]) {
