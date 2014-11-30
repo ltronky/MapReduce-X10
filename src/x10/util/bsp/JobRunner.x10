@@ -9,7 +9,7 @@ import x10.util.List;
    
  */
 public class JobRunner[S,T](job:Job[S,T]){T <: Agent[S, T]} {
-    val activeAgents  = [new ArrayList[T]() as List[T], new ArrayList[T]()];
+    val activeAgents = [new ArrayList[T]() as List[T], new ArrayList[T]()];
     public def activate(a:T, phase:Int) {activeAgents((phase+1)%2).add(a);}
     public def hasNoActiveAgents(phase:Int):Boolean = activeAgents(phase%2).isEmpty();
     static val AND = new Reducible[Boolean]() {
@@ -37,9 +37,11 @@ public class JobRunner[S,T](job:Job[S,T]){T <: Agent[S, T]} {
                     var agents:List[T] = this_.job.startAgents();
                     do {
                     	//say("Running " + agents, phase);
-                    	if (agents != null)
-                    		for (agent in agents) agent.run(phase, jobRunners);
-                        agents.clear();
+                    	if (agents != null) {
+                    		for (agent in agents) 
+                    			agent.run(phase, jobRunners);
+                    		agents.clear();
+                    	}
                         Team.WORLD.barrier();
                         phase++;
                         val thisPhase = phase;
