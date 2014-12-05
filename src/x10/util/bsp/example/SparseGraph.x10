@@ -72,8 +72,9 @@ public class SparseGraph {
 			for (ar in plh()) ar.print();
 		}
 	}
-	public static def main(Rail[String]) {
-		val g = makeRandom(10n);
+	public static def main(args:Rail[String]) {
+		val N = args.size > 0 ? Int.parseInt(args(0)) : 10n;
+		val g = makeRandom(N);
 		val plh = g.myVertices;
 		val job :  VJob = new VJob() {
 			public def startAgents() = {
