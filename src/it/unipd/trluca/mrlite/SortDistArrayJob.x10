@@ -9,6 +9,7 @@ import x10.util.Random;
 import x10.array.DistArray;
 import x10.util.RailUtils;
 import x10.util.HashMap;
+import x10.util.Team;
 
 
 public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArray_Block_1[Long]) 
@@ -38,17 +39,15 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 	public def sink(s:Iterable[Pair[Long, Rail[Pair[Long,Long]]]]): void {
 		//Collect at Place(0) all the ordered sub-arrays
 		val aPos = here.id;
-		at (Place(0)) {
-			for (x in s) {
-				val temp = x;
-				keyRail.evalAtHome((r:Rail[Long])=>r(aPos) = temp.first);
-				hashM.evalAtHome((r:HashMap[Long, Rail[Pair[Long,Long]]])=>r.put(temp.first, temp.second));
-			}
+		for (x in s) {
+			val temp = x;
+			keyRail.evalAtHome((r:Rail[Long])=>r(aPos) = temp.first);
+			hashM.evalAtHome((r:HashMap[Long, Rail[Pair[Long,Long]]])=>r.put(temp.first, temp.second));
 		}
 		
 		//Once collected all
-		Clock.advanceAll();
-		
+		Team.WORLD.barrier();
+
 		//Only in Place(0) create the result DistArray
 		if (here == Place(0)) {
 			RailUtils.sort(keyRail(), (i:Long,j:Long)=>(i-j) as Int);
