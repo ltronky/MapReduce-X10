@@ -1,4 +1,4 @@
-package it.ltronky.x10;
+package it.unipd.trluca.mrlite;
 
 import x10.util.mrlite.Job;
 import x10.util.Pair;
@@ -31,8 +31,8 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 	public def partition(k:Long)=k;
 	
 	//Utility variables for collecting the sub-results
-	var keyRail:GlobalRef[Rail[Long]] = GlobalRef[Rail[Long]](new Rail[Long](Place.numPlaces()));
-	var hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] =
+	val keyRail:GlobalRef[Rail[Long]] = GlobalRef[Rail[Long]](new Rail[Long](Place.numPlaces()));
+	val hashM:GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]] =
 		GlobalRef[HashMap[Long, Rail[Pair[Long,Long]]]](new HashMap[Long, Rail[Pair[Long,Long]]](Place.numPlaces()));
 	
 	public def sink(s:Iterable[Pair[Long, Rail[Pair[Long,Long]]]]): void {
@@ -40,8 +40,9 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 		val aPos = here.id;
 		at (Place(0)) {
 			for (x in s) {
-				keyRail()(aPos) = x.first;
-				hashM().put(x.first, x.second);
+				val temp = x;
+				keyRail.evalAtHome((r:Rail[Long])=>r(aPos) = temp.first);
+				hashM.evalAtHome((r:HashMap[Long, Rail[Pair[Long,Long]]])=>r.put(temp.first, temp.second));
 			}
 		}
 		
@@ -54,12 +55,14 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			var tCounter:Long = 0;
 			for (i in 0..(Place.numPlaces()-1)) {
 				val piece = hashM().get(keyRail()(i));
-				for (j in 0..(piece.size-1)) {
-					val pos = tCounter; 
-					at (destArray.place(tCounter)) {
-						destArray(pos) = piece(j).first;
+				if (piece != null) {
+					for (j in 0..(piece.size-1)) {
+						val pos = tCounter; 
+						at (destArray.place(tCounter)) {
+							destArray(pos) = piece(j).first;
+						}
+						tCounter++;
 					}
-					tCounter++;
 				}
 			}
 		}
@@ -88,10 +91,10 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 	}
 	
 	public static def test0(args:Rail[String]) {
-		val N = args.size > 0 ? Long.parseLong(args(0)) : 10;
+		val N = args.size > 0 ? Long.parseLong(args(0)) : 20;
 		Console.OUT.println("N=" + N);
 		val random = new Random();
-		val originArray = new DistArray_Block_1[Long](N, (Long)=>(new Random()).nextLong(10000L));
+		val originArray = new DistArray_Block_1[Long](N, (Long)=>(new Random()).nextLong(1000000L));
 		
 		//Print the original array
 		try {
@@ -99,7 +102,10 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			finish for (p in Place.places()) at(p) async {
 				//Console.OUT.println("Starting at " + here);
 				for (i in originArray.localIndices()) {
-					Console.OUT.print("(" + originArray(i) + " at " + originArray.place(i).id + "),");
+					val s ="(" + originArray(i) + " at=" + i + " Place=" + originArray.place(i).id + "),";
+					at (Place(0)) {
+						Console.OUT.print(s);
+					}
 				}
 				Console.OUT.flush();
 				//Console.OUT.println("Done with " + here);
@@ -137,14 +143,17 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 		new Engine(job).run();
 		
 		//Print out the result
-		Console.OUT.print("Sorted{");
+		Console.OUT.print("S{");
 		finish for (p in Place.places()) at(p) async {
 			for (i in job.destArray.localIndices()) {
-				Console.OUT.print("Sorted(" + job.destArray(i) + " at " + job.destArray.place(i).id + "),");
+				val s = "S(" + job.destArray(i) + " at=" + i + " Place=" + originArray.place(i).id + "),";
+				at (Place(0)) {
+					Console.OUT.print(s);
+				}
 			}
 			Console.OUT.flush();
 		}
-		Console.OUT.println("}Sorted");
+		Console.OUT.println("}S");
 	}
 
 	public static def main(args:Rail[String]) {

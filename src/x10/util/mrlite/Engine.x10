@@ -52,8 +52,7 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 	
 	public def run() {
 		val plh = PlaceLocalHandle.make(Place.places(),
-				():State[K1,V1,K2,V2,K3,V3]=> new State(job, 
-						new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
+				():State[K1,V1,K2,V2,K3,V3]=> new State(job, new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
 		for (var i:Int=0n; ! job.stop(); i++) {
 			// map and communicate phase
 			finish for(p in Place.places()) at (p) async {
