@@ -53,6 +53,8 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 	public def run() {
 		val plh = PlaceLocalHandle.make(Place.places(),
 				():State[K1,V1,K2,V2,K3,V3]=> new State(job, new Rail[MyMap[K2,V2]](Place.numPlaces(), (Long)=>new MyMap[K2,V2]())));
+		
+		Console.OUT.println("StartTime t=" + System.nanoTime());
 		for (var i:Int=0n; ! job.stop(); i++) {
 			// map and communicate phase
 			finish for(p in Place.places()) at (p) async {
@@ -64,9 +66,16 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 				val mSink = (k:K2,v:V2)=> {insert(results(job.partition(k) % P), k, v);};
 				val src = job.source();
 				
+				if (here == Place(0)) {
+					Console.OUT.println("PreMap t=" + System.nanoTime());
+				}
 				// Map Phase: Call the user-supplied mapper
 				if (src != null)
 					for (kv in src) job.mapper(kv.first, kv.second, mSink);
+				
+				if (here == Place(0)) {
+					Console.OUT.println("PostMap t=" + System.nanoTime());
+				}
 				
 				// Transmit data to all places
 				for (q in Place.places()) { 
@@ -75,6 +84,9 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 						at(q) plh().incoming(p.id)=v;
 				}
 			}
+			
+			Console.OUT.println("PostDataExc t=" + System.nanoTime());
+			
 			// reduce phase
 			finish for(p in Place.places()) at (p) async {	
 				val P = Place.numPlaces();
@@ -100,10 +112,16 @@ public class Engine[K1,V1,K2,V2,K3,V3](job:Job[K1,V1,K2,V2,K3,V3]{self!=null}) {
 					// Reduce phase: Call the user-suplied reducer
 					for (k in a.keySet()) job.reducer(k,a(k), output);
 					
+					if (here == Place(0)) {
+						Console.OUT.println("PreSink t=" + System.nanoTime());
+					}
+					
 					// Sink the result to the job.
 					job.sink(output);
 				}
 			}
+			Console.OUT.println("EndIteration t=" + System.nanoTime());
 		}
+		Console.OUT.println("FinishTime t=" + System.nanoTime());
 	}
 }
