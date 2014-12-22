@@ -61,17 +61,17 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			var rest:Long = sortArr.size() % Place.numPlaces();
 			var start:Long = 0;
 			
-			for (i in 0..(Place.numPlaces()-1)) {
+			finish for (i in 0..(Place.numPlaces()-1)) {
 				val pp = portion + ((rest>0) ? 1 : 0);
 				val piece = sortArr.subList(start, start+pp);
-				at (Place(i)) {
+				at (Place(i)) async {
 					val lp = piece;
 					if (lp.size() == destArray.localIndices().size()) {
 						val li = destArray.localIndices();
 						for (j in 0..(lp.size()-1))
 							destArray(li.min(0)+i) = lp(j);
 					} else {
-						val lps =lp.size();
+						val lps = lp.size();
 						val lis = destArray.localIndices().size();
 						at (Place(0)) Console.OUT.println("Error at pl=" + i + ":wrong destarray size lp="+ lps + " li=" + lis);
 					}
