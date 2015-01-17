@@ -102,7 +102,7 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 	}
 	
 	public static def test0(args:Rail[String]) {
-		val N = args.size > 0 ? Long.parseLong(args(0)) : 20;
+		val N = args.size > 0 ? Long.parseLong(args(0)) : 1000;
 		Console.OUT.println("N=" + N);
 		val random = new Random();
 		val originArray = new DistArray_Block_1[Long](N, (Long)=>(new Random()).nextLong(1000000L));
@@ -131,7 +131,7 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 		
 		//Find min and max values
 		job.max = finish(Reducible.MaxReducer[Long](Long.MIN_VALUE)) {
-			async for(p in Place.places()) at(p) {
+			for(p in Place.places()) at(p) async {
 				var localMax:Long = Long.MIN_VALUE;
 				for (i in originArray.localIndices()) {
 					if (originArray(i) > localMax) localMax = originArray(i);
@@ -140,7 +140,7 @@ public class SortDistArrayJob(origArr:DistArray_Block_1[Long], destArray:DistArr
 			}
 		};
 		job.min = finish(Reducible.MinReducer[Long](Long.MAX_VALUE)) {
-			async for(p in Place.places()) at(p) {
+			for(p in Place.places()) at(p) async {
 				var localMin:Long = Long.MAX_VALUE;
 				for (i in originArray.localIndices()) {
 					if (originArray(i) < localMin) localMin = originArray(i);
